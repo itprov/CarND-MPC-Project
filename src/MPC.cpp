@@ -6,7 +6,7 @@
 using CppAD::AD;
 
 // Set the timestep length and duration
-size_t N = 20;
+size_t N = 16;
 // Set step duration - should be a factor of 0.1
 // If this is not a factor of 0.1, change the logic to account for latency
 // accordingly below in FG_eval::operator()
@@ -68,7 +68,7 @@ class FG_eval {
 
     // Minimize the value gap between sequential actuations.
     for (unsigned int t = 0; t < N - 2; t++) {
-      fg[0] += 2800 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 3200 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
       fg[0] += 10 * CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
@@ -116,12 +116,12 @@ class FG_eval {
       AD<double> delta0 = vars[delta_start + t_latency];
       AD<double> a0 = vars[a_start + t_latency];
 
-      // The function is a 3rd order polynomial d + cx + bx^2 + ax^3
-      AD<double> f0 = coeffs[0] + coeffs[1] * x0
-          + coeffs[2] * CppAD::pow(x0, 2) + coeffs[3] * CppAD::pow(x0, 3);
-      // Derivative of d + cx + bx^2 + ax^3 is c + 2bx + 3ax^2
-      AD<double> psides0 = CppAD::atan(coeffs[1] + 2 * coeffs[2] * x0
-          + 3 * coeffs[3] * CppAD::pow(x0, 2));
+      // f(x) is 3rd order polynomial Ax^3 + Bx^2 + Cx + D
+      AD<double> f0 = coeffs[3] * CppAD::pow(x0, 3)
+        + coeffs[2] * CppAD::pow(x0, 2) + coeffs[1] * x0 + coeffs[0];
+      // Derivative of f(x) is 3Ax^2 + 2Bx + C
+      AD<double> psides0 = 3 * coeffs[3] * CppAD::pow(x0, 2)
+        + 2 * coeffs[2] * x0 + CppAD::atan(coeffs[1]);
 
       //
       // The equations for the model:
@@ -270,10 +270,11 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   //
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
   // creates a 2 element double vector.
-  vector<double> actuator_vals = {solution.x[delta_start], solution.x[a_start]};
+  vector<double> ret_vals = {solution.x[delta_start], solution.x[a_start]};
+  // Add (x, y) coordinates to show MPC predicted trajectory
   for (unsigned int i = 0; i < N - 1; i++) {
-    actuator_vals.push_back(solution.x[x_start + i]);
-    actuator_vals.push_back(solution.x[y_start + i]);
+    ret_vals.push_back(solution.x[x_start + i]);
+    ret_vals.push_back(solution.x[y_start + i]);
   }
-  return actuator_vals;
+  return ret_vals;
 }

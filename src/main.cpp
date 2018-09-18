@@ -98,13 +98,12 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          assert(ptsx.size() == ptsy.size());
           Eigen::VectorXd waypoints_x(ptsx.size());
           Eigen::VectorXd waypoints_y(ptsx.size());
 
           // Transform waypoints from map coordinates to car's coordinate system
           // for easier cte and epsi calculations
-          for (int i = 0; i < ptsx.size(); i++) {
+          for (unsigned int i = 0; i < ptsx.size(); i++) {
             double x = ptsx[i] - px;
             double y = ptsy[i] - py;
             waypoints_x(i) = x * cos(-psi) - y * sin(-psi);
@@ -112,9 +111,9 @@ int main() {
           }
 
           auto coeffs = polyfit(waypoints_x, waypoints_y, 3);
-          // cte = polyeval(coeffs, x)
-          // epsi = -atan(coeffs[1] + 2 * coeffs[2] * x + 3 * coeffs[3] * x^2)
-          // With transformed waypoints, x = 0
+          // cte = polyeval(coeffs, x) - y
+          // epsi = psi - atan(coeffs[1] + 2 * coeffs[2] * x + 3 * coeffs[3] * x^2)
+          // With transformed waypoints, substitute x, y, psi = 0
           double cte = polyeval(coeffs, 0);
           double epsi = -atan(coeffs[1]);
 
@@ -140,13 +139,9 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
 
-          for (int i = 2; i < vars.size(); i++) {
-            if (i % 2 == 0) {
-              mpc_x_vals.push_back(vars[i]);
-            }
-            else {
-              mpc_y_vals.push_back(vars[i]);
-            }
+          for (unsigned int i = 2; i < vars.size(); i++) {
+            mpc_x_vals.push_back(vars[i++]);
+            mpc_y_vals.push_back(vars[i]);
           }
 
           msgJson["mpc_x"] = mpc_x_vals;
@@ -158,7 +153,7 @@ int main() {
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
-          for (int i = 0; i < ptsx.size(); i++){
+          for (unsigned int i = 0; i < ptsx.size(); i++){
             next_x_vals.push_back(waypoints_x(i));
             next_y_vals.push_back(waypoints_y(i));
           }

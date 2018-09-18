@@ -2,7 +2,45 @@
 Self-Driving Car Engineer Nanodegree Program
 
 ---
+## Model Predictive controller
 
+Model Predictive Controller (MPC) aims at finding an optimal trajectory for a vehicle. An MPC takes various actuator inputs into account, predicts trajectories, and selects a trajectory that minimizes the cost with reference to the reference trajectory. At each step, we implement actuation to get a new state using the optimized actuator inputs, then reevaluate the trajectory using the new state (i.e. constantly use receding future horizon to calculate inputs).
+
+### Model
+
+The model is a kinematic model that is a simplified dynamic model, which ignores tire / internal vehicle forces, gravity, mass, inertia, air resistance, etc.
+The state for this model consists of [x, y, &psi;, v] where x, y are the coordinates of the vehicle's position, &psi; is the orientation (heading direction) angle in radians, and v is the velocity.
+The actuators consist of [&delta;, a] where &delta; is the steering angle, and a is the acceleration (or deceleration if negative).
+
+The state & actuator equations for this model are as follows:
+
+x<sub>t+1</sub> = x<sub>t</sub> + v<sub>t</sub> &ast; cos&psi;<sub>t</sub> &ast; dt
+<br/>
+y<sub>t+1</sub> = y<sub>t</sub> + v<sub>t</sub> &ast; sin&psi;<sub>t</sub> &ast; dt
+<br/>
+&psi;<sub>t+1</sub> = &psi;<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>) &ast; &delta;<sub>t</sub> &ast;  dt
+<br/>
+v<sub>t+1</sub> = v<sub>t</sub> + a<sub>t</sub> &ast; dt
+
+where L<sub>f</sub> is the distance between the center of mass of the vehicle and its front axle. It is set to 2.67.
+
+There are 2 errors that we want to minimize with this model: cross-track error CTE (distance of the vehicle from reference trajectory), and orientation angle (&psi;) error e&psi; (difference of vehicle orientation and trajectory orientation). The equations for these errors are as follows:
+
+cte<sub>t+1</sub> = cte<sub>t</sub> + v<sub>t</sub> &ast; sin(e&psi;<sub>t</sub>) &ast; dt
+<br/>
+i.e. cte<sub>t+1</sub> = y<sub>t</sub> - f(x<sub>t</sub>) + v<sub>t</sub> &ast; sin(e&psi;<sub>t</sub>) &ast; dt
+<br/>
+Here f(x<sub>t</sub>) is a 3<sup>rd</sup> order polynomial  c<sub>3</sub>x<sup>3</sup>+c<sub>2</sub>x<sup>2</sup>+c<sub>1</sub>x+c<sub>0</sub>.
+
+And,
+e&psi;<sub>t+1</sub> = e&psi;<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>) &ast; &delta;<sub>t</sub> &ast;  dt
+<br/>
+i.e. e&psi;<sub>t+1</sub> = &psi;<sub>t</sub> - &psi;des<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>) &ast; &delta;<sub>t</sub> &ast;  dt
+<br/>where &psi;des<sub>t</sub> is the desired &psi; = arctan(f'(x<sub>t</sub>)) = arctan(3c<sub>3</sub>x<sup>2</sup>+2c<sub>2</sub>x<sup>2</sup>+c<sub>1</sub>).
+
+The model aims at finding optimum values of [&delta;, a] that minimize the cost function consisting of 3 components:
+
+1.
 ## Dependencies
 
 * cmake >= 3.5
