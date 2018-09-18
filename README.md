@@ -36,7 +36,7 @@ And,
 e&psi;<sub>t+1</sub> = e&psi;<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>) &ast; &delta;<sub>t</sub> &ast;  dt
 <br/>
 i.e. e&psi;<sub>t+1</sub> = &psi;<sub>t</sub> - &psi;des<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>) &ast; &delta;<sub>t</sub> &ast;  dt
-<br/>where &psi;des<sub>t</sub> is the desired &psi; = arctan(f'(x<sub>t</sub>)) = arctan(3c<sub>3</sub>x<sup>2</sup>+2c<sub>2</sub>x<sup>2</sup>+c<sub>1</sub>).
+<br/>where &psi;des<sub>t</sub> is the desired &psi; = arctan(f'(x<sub>t</sub>)) = arctan(3c<sub>3</sub>x<sup>2</sup>+2c<sub>2</sub>x+c<sub>1</sub>).
 
 The model aims at finding optimum values of [&delta;, a] that minimize the cost function consisting of 3 components:
 
