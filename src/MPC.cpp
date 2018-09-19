@@ -6,7 +6,7 @@
 using CppAD::AD;
 
 // Set the timestep length and duration
-size_t N = 16;
+size_t N = 15;
 // Set step duration - should be a factor of 0.1
 // If this is not a factor of 0.1, change the logic to account for latency
 // accordingly below in FG_eval::operator()
@@ -58,18 +58,19 @@ class FG_eval {
       fg[0] += CppAD::pow(vars[cte_start + t], 2);
       fg[0] += CppAD::pow(vars[epsi_start + t], 2);
       fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
-    }
-
-    // Minimize the use of actuators.
-    for (unsigned int t = 0; t < N - 1; t++) {
-      fg[0] += 100 * CppAD::pow(vars[delta_start + t], 2);
-      fg[0] += 10 * CppAD::pow(vars[a_start + t], 2);
-    }
-
-    // Minimize the value gap between sequential actuations.
-    for (unsigned int t = 0; t < N - 2; t++) {
-      fg[0] += 3200 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += 10 * CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+      if (t < N - 1) {
+        // Minimize the use of actuators.
+        fg[0] += 100 * CppAD::pow(vars[delta_start + t], 2);
+        fg[0] += 10 * CppAD::pow(vars[a_start + t], 2);
+        if (t < N - 2) {
+          // Minimize the value gap between sequential actuations.
+          fg[0]
+            += 3200 * CppAD::pow(vars[delta_start + t + 1]
+              - vars[delta_start + t], 2);
+          fg[0]
+            += 10 * CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+        }
+      }
     }
 
     //

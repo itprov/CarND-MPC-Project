@@ -6,7 +6,7 @@ Self-Driving Car Engineer Nanodegree Program
 
 Model Predictive Controller (MPC) aims at finding an optimal trajectory for a vehicle. An MPC takes various actuator inputs into account, predicts trajectories, and selects a trajectory that minimizes the cost with reference to the reference trajectory. At each step, we implement actuation to get a new state using the optimized actuator inputs, then reevaluate the trajectory using the new state (i.e. constantly use receding future horizon to calculate inputs).
 
-### Model
+### The Model
 
 The model is a kinematic model that is a simplified dynamic model, which ignores tire / internal vehicle forces, gravity, mass, inertia, air resistance, etc.
 The state for this model consists of [x, y, &psi;, v] where x, y are the coordinates of the vehicle's position, &psi; is the orientation (heading direction) angle in radians, and v is the velocity.
@@ -14,30 +14,54 @@ The actuators consist of [&delta;, a] where &delta; is the steering angle, and a
 
 The state & actuator update equations for this model are as follows:
 
-x<sub>t+1</sub> = x<sub>t</sub> + v<sub>t</sub> &ast; cos&psi;<sub>t</sub> &ast; dt
+x<sub>t+1</sub> = x<sub>t</sub> + v<sub>t</sub> cos&psi;<sub>t</sub> dt
 <br/>
-y<sub>t+1</sub> = y<sub>t</sub> + v<sub>t</sub> &ast; sin&psi;<sub>t</sub> &ast; dt
+y<sub>t+1</sub> = y<sub>t</sub> + v<sub>t</sub> sin&psi;<sub>t</sub> dt
 <br/>
-&psi;<sub>t+1</sub> = &psi;<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>) &ast; &delta;<sub>t</sub> &ast;  dt
+&psi;<sub>t+1</sub> = &psi;<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>) &delta;<sub>t</sub> dt
 <br/>
-v<sub>t+1</sub> = v<sub>t</sub> + a<sub>t</sub> &ast; dt
+v<sub>t+1</sub> = v<sub>t</sub> + a<sub>t</sub> dt
 
 where L<sub>f</sub> is the distance between the center of mass of the vehicle and its front axle. It is set to 2.67 (given by Udacity).
 
 There are 2 errors that we want to minimize with this model: cross-track error CTE (distance of the vehicle from reference trajectory), and orientation angle (&psi;) error e&psi; (difference of vehicle orientation and trajectory orientation). The equations for these errors are as follows:
 
-cte<sub>t+1</sub> = cte<sub>t</sub> + v<sub>t</sub> &ast; sin(e&psi;<sub>t</sub>) &ast; dt
+cte<sub>t+1</sub> = cte<sub>t</sub> + v<sub>t</sub>sin(e&psi;<sub>t</sub>)dt
 <br/>
-i.e. cte<sub>t+1</sub> = y<sub>t</sub> - f(x<sub>t</sub>) + v<sub>t</sub> &ast; sin(e&psi;<sub>t</sub>) &ast; dt, where f(x<sub>t</sub>) is a 3<sup>rd</sup> order polynomial  c<sub>3</sub>x<sup>3</sup>+c<sub>2</sub>x<sup>2</sup>+c<sub>1</sub>x+c<sub>0</sub>.
+i.e. cte<sub>t+1</sub> = y<sub>t</sub> - f(x<sub>t</sub>) + v<sub>t</sub>sin(e&psi;<sub>t</sub>)dt, where f(x<sub>t</sub>) is a 3<sup>rd</sup> order polynomial  c<sub>3</sub>x<sup>3</sup>+c<sub>2</sub>x<sup>2</sup>+c<sub>1</sub>x+c<sub>0</sub>.
 
 And,
-e&psi;<sub>t+1</sub> = e&psi;<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>) &ast; &delta;<sub>t</sub> &ast;  dt
+e&psi;<sub>t+1</sub> = e&psi;<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>)&delta;<sub>t</sub> dt
 <br/>
-i.e. e&psi;<sub>t+1</sub> = &psi;<sub>t</sub> - &psi;des<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>) &ast; &delta;<sub>t</sub> &ast;  dt, where &psi;des<sub>t</sub> (desired &psi;) = arctan(f'(x<sub>t</sub>)) = arctan(3c<sub>3</sub>x<sup>2</sup>+2c<sub>2</sub>x+c<sub>1</sub>).
+i.e. e&psi;<sub>t+1</sub> = &psi;<sub>t</sub> - &psi;des<sub>t</sub> + (v<sub>t</sub>/L<sub>f</sub>)&delta;<sub>t</sub> dt, where &psi;des<sub>t</sub> (desired &psi;) = arctan(f'(x<sub>t</sub>)) = arctan(3c<sub>3</sub>x<sup>2</sup>+2c<sub>2</sub>x+c<sub>1</sub>).
 
-The model aims at finding optimum values of [&delta;, a] that minimize the cost function consisting of 3 components:
+The model aims at finding optimum values of [&delta;, a] that minimize the cost function, which consists of 3 components:
 
-1.
+1. Reference State component - Ensuring CTE and e&psi; are minimized, and that the vehicle doesn't stop (i.e. velocity doesn't become 0). This is achieved by adding sum of squares of CTEs, e&psi;s, and differences between v<sub>t</sub> &amp; reference velocity over all steps to the cost.
+
+2. Actuator Controls component - Ensuring the effect of actuators [&delta;, a] is minimized (higher values are penalized), for a smooth trajectory. This is achieved by adding sum of squares of the actuator values &delta; and a to the cost. As the trajectory still resulted into minor sharp turns, I assigned weights to both the components (&Sigma; &delta;<sup>2</sup> and &Sigma; a<sup>2</sup>) and tuned them until a smoother trajectory with fairly constant speed was achieved.
+
+3. Ensuring the effect of rate of change of actuator values, or the gap between subsequent values [&delta;<sub>t+1</sub>, a<sub>t+1</sub>] and [&delta;<sub>t</sub>, a<sub>t</sub>] is minimized (i.e. higher rate of change is penalized), for temporal smoothness. This is achieved by adding sum of squares of the differences between subsequent actuator values. As the trajectory resulted into large oscillations, I assigned weights to both the components (&Sigma; (&delta;<sub>t+1</sub> - &delta;<sub>t</sub>)<sup>2</sup> and &Sigma; (a<sub>t+1</sub> - a<sub>t</sub>)<sup>2</sup>) for smoother steering transitions and tuned those weights until a smooth trajectory with fairly constant speed was achieved. It was necessary to assign a relatively large weight to the rate of change of &delta;, and the weight value needs to be higher if the reference speed is set to a higher value.
+
+### Timestep Length and Elapsed Duration (N & dt)
+
+The number of timesteps is N and the time elapsed between subsequent actuations is dt. The product of these 2 numbers is the total horizon used for trajectory prediction. As latency is 100 ms, it is desirable to use a factor of 100ms as the dt value, to make it easier to deal with latency. I started with N = 10 and dt = 0.1 (100 ms). However, that resulted in the vehicle running off the track quickly, as the horizon was too large and the discretization error was also large. Therefore, I reduced the value of dt to 0.05 and increased N to 20. This reduced the discretization, but still the horizon was too large, so at sharp turns on the track, the error was too high (the vehicle veered off the track few times). I further reduced the value multiple times until the error was low enough to keep the vehicle inside the track. The final value of N was set to 15 and dt to 0.05.  
+
+### Polynomial Fitting and MPC Preprocessing
+
+A 3<sup>rd</sup> order polynomial is fitted to the waypoints. To make the input state vector calculation easier, the waypoints are converted from map coordinates to the vehicle's coordinates before fitting using the following formulae:
+
+waypoint_x = x cos(-&psi;) - y sin(-&psi;)<br/>
+waypoint_y = x sin(-&psi;) + y cos(-&psi;)
+
+(It is necessary to flip &psi; to -&psi; as the simulator uses positive orientation values for clockwise rotation / right turns.)
+
+This results in transforming x, y coordinates, and &psi; of each input to 0. It also simplifies CTE and e&psi; calculation.
+
+### Model Predictive Control with Latency
+
+Actuation command delay (latency) of 100 ms is factored into the model. Since the value of latency is a multiple (say M) of the chosen value of dt (i.e. latency = M dt), the actuator values &delta;<sub>t</sub>, a<sub>t</sub> used in the state update equations are simply the actuator values as of t - 1 - M<sup>th</sup> step, starting at t = M. With the chosen value of dt = 0.05, the value of M is 2, so starting at t = 2, the model uses actuator values as of t - 3 in the state update equations. 
+
 ## Dependencies
 
 * cmake >= 3.5
