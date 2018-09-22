@@ -98,11 +98,14 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          Eigen::VectorXd waypoints_x(ptsx.size());
-          Eigen::VectorXd waypoints_y(ptsx.size());
 
           // Transform waypoints from map coordinates to car's coordinate system
           // for easier cte and epsi calculations
+          Eigen::VectorXd waypoints_x(ptsx.size());
+          Eigen::VectorXd waypoints_y(ptsx.size());
+
+          // Positive psi => Right or clockwise turn in the simulator,
+          // so flip psi to -psi.
           for (unsigned int i = 0; i < ptsx.size(); i++) {
             double x = ptsx[i] - px;
             double y = ptsy[i] - py;
@@ -112,7 +115,7 @@ int main() {
 
           auto coeffs = polyfit(waypoints_x, waypoints_y, 3);
           // cte = polyeval(coeffs, x) - y
-          // epsi = psi - atan(coeffs[1] + 2 * coeffs[2] * x + 3 * coeffs[3] * x^2)
+          // epsi = psi - atan(coeffs[1] + 2*coeffs[2]*x + 3*coeffs[3]*x^2)
           // With transformed waypoints, substitute x, y, psi = 0
           double cte = polyeval(coeffs, 0);
           double epsi = -atan(coeffs[1]);
@@ -138,7 +141,7 @@ int main() {
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
-
+          // Retrieve the points from the model calculations
           for (unsigned int i = 2; i < vars.size(); i++) {
             mpc_x_vals.push_back(vars[i++]);
             mpc_y_vals.push_back(vars[i]);
@@ -153,6 +156,7 @@ int main() {
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
+          // Use transformed waypoints
           for (unsigned int i = 0; i < ptsx.size(); i++){
             next_x_vals.push_back(waypoints_x(i));
             next_y_vals.push_back(waypoints_y(i));

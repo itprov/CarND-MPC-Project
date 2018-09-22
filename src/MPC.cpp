@@ -60,10 +60,12 @@ class FG_eval {
       fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
       if (t < N - 1) {
         // Minimize the use of actuators.
+        // Assign weights to terms to ensure smooth trajectory
         fg[0] += 100 * CppAD::pow(vars[delta_start + t], 2);
         fg[0] += 10 * CppAD::pow(vars[a_start + t], 2);
         if (t < N - 2) {
           // Minimize the value gap between sequential actuations.
+          // Assign weights to terms to ensure temporal smoothness.
           fg[0]
             += 3200 * CppAD::pow(vars[delta_start + t + 1]
               - vars[delta_start + t], 2);
@@ -108,9 +110,9 @@ class FG_eval {
       AD<double> epsi1 = vars[epsi_start + t];
 
       // Take latency delay = 100 ms into account
-      unsigned int latency = (int)(0.1 / dt);
-      // dt shouldn't be > 0.1 and should be a factor of 0.1
+      // Assuming dt is a factor of 0.1
       // Otherwise, the logic below will need to be changed
+      unsigned int latency = (int)(0.1 / dt);
       assert(latency >= 1);
       // Use latency controls only starting at t = 1 + latency
       unsigned int t_latency = (t <= latency) ? t - 1 : t - 1 - latency;
@@ -271,11 +273,11 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   //
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
   // creates a 2 element double vector.
-  vector<double> ret_vals = {solution.x[delta_start], solution.x[a_start]};
-  // Add (x, y) coordinates to show MPC predicted trajectory
+  vector<double> ret_vars = {solution.x[delta_start], solution.x[a_start]};
+  // Add predicted (x, y) coordinates to show MPC predicted trajectory
   for (unsigned int i = 0; i < N - 1; i++) {
-    ret_vals.push_back(solution.x[x_start + i]);
-    ret_vals.push_back(solution.x[y_start + i]);
+    ret_vars.push_back(solution.x[x_start + i]);
+    ret_vars.push_back(solution.x[y_start + i]);
   }
-  return ret_vals;
+  return ret_vars;
 }
